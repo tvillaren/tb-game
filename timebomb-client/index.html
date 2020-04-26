@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width" />
+
+    <style>
+      body {
+        font-family: Tahoma, Geneva, sans-serif;
+      }
+    </style>
+
+    <!-- colyseus.js client -->
+    <script
+      type="text/javascript"
+      src="https://raw.githack.com/colyseus/colyseus.js/master/dist/colyseus.js"
+    ></script>
+  </head>
+  <body>
+    <strong>Commands</strong><br />
+
+    <button onclick="start()">start</button>
+
+    <script>
+      var host = window.document.location.host.replace(/:.*/, "");
+
+      var client = new Colyseus.Client(
+        location.protocol.replace("http", "ws") +
+          "//" +
+          host +
+          (location.port ? ":" + location.port : "")
+      );
+      var room;
+      client.joinOrCreate("TBRoom").then((room_instance) => {
+        room = room_instance;
+
+        var players = {};
+
+        // listen to patches coming from the server
+        room.state.players.onAdd = function (player, sessionId) {
+          players[sessionId] = player;
+          console.log("Player list after add", players);
+        };
+
+        room.state.players.onRemove = function (player, sessionId) {
+          delete players[sessionId];
+          console.log("Player list after remove", players);
+        };
+
+        room.state.players.onChange = function (player, sessionId) {
+          players[sessionId] = player;
+          console.log("Player changed", player);
+        };
+
+        room.onStateChange.once(function (state) {
+          console.log("initial room state:", state);
+        });
+
+        // new room state
+        room.onStateChange(function (state) {
+          console.log("New state", state);
+        });
+        room.onMessage("ROLE_SET", (message) => {
+          console.log(message);
+          var p = document.createElement("p");
+          p.innerText = "You're a " + message;
+          document.querySelector("body").appendChild(p);
+        });
+        room.onMessage("*", (message) => {
+          console.log(message);
+        });
+      });
+
+      function start() {
+        room.send("start");
+      }
+    </script>
+  </body>
+</html>
